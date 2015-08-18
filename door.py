@@ -7,10 +7,10 @@
 # Default values:
 config = {
     "entry-exit": True,
-    "in_pir_to_door_time": 30,
-    "door_close_to_in_pir_time": 10,
-    "door_open_to_in_pir_time": 30,
-    "max_door_open_time": 60,
+    "in_pir_to_door_time": 60,
+    "door_close_to_in_pir_time": 60,
+    "door_open_to_in_pir_time": 60,
+    "max_door_open_time": 120,
     "data_send_delay": 1
 }
 
@@ -119,7 +119,7 @@ class EntryExit():
             if not self.door_open:
                 self.state = "idle"
         else:
-            self.cbLog("warning", "self.door algorithm imposssible self.state")
+            self.cbLog("warning", "door algorithm imposssible state")
             self.state = "idle"
         if self.state != prev_state:
             self.cbLog("debug", "checkExits, new state: " + self.state)
