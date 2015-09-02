@@ -1,0 +1,9 @@
+{
+    "exe": "door.py", 
+    "description": "App to determine whether someone has gone in or out of a door, based on a magentic switch and PIR", 
+    "url": "https://github.com/ContinuumBridge/door_entry_exit/archive/v1.2.0.tar.gz", 
+    "app_resource": "/api/bridge/v1/app/58", 
+    "version": "1.2.0", 
+    "provider": "ContinuumBridge", 
+    "name": "Door Entry-Exit"
+}
