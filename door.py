@@ -26,12 +26,6 @@ from twisted.internet import reactor
 CONFIG_FILE                       = CB_CONFIG_DIR + "door_entry_exit.config"
 CID                               = "CID164"  # Client ID
 
-def nicetime(timeStamp):
-    localtime = time.localtime(timeStamp)
-    milliseconds = '%03d' % int((timeStamp - int(timeStamp)) * 1000)
-    now = time.strftime('%H:%M:%S, %d-%m-%Y', localtime)
-    return now
-
 class EntryExit():
     def __init__(self):
         self.inside_triggered = False
@@ -154,6 +148,7 @@ class App(CbApp):
         self.status = "ok"
         self.devices = []
         self.idToName = {} 
+        self.entryExit = EntryExit()
         #CbApp.__init__ MUST be called
         CbApp.__init__(self, argv)
 
@@ -187,13 +182,26 @@ class App(CbApp):
                 self.cbLog("warning", "onClientMessage: " + str(json.dumps(message["config"], indent=4)))
             else:
                 try:
-                    config = message["config"]
-                    with open(CONFIG_FILE, 'w') as f:
-                        json.dump(config, f)
-                    self.cbLog("info", "Config updated")
+                    newConfig = message["config"]
+                    copyConfig = config.copy()
+                    copyConfig.update(newConfig)
+                    if copyConfig != config:
+                        self.cbLog("debug", "onClientMessage. Updating config from client message")
+                        config = copyConfig.copy()
+                        with open(CONFIG_FILE, 'w') as f:
+                            json.dump(config, f)
+                        self.cbLog("info", "Config updated")
+                        self.readLocalConfig()
+                        # With a new config, send init message to all connected adaptors
+                        for i in self.adtInstances:
+                            init = {
+                                "id": self.id,
+                                "appClass": self.appClass,
+                                "request": "init"
+                            }
+                            self.sendMessage(init, i)
                 except Exception as ex:
                     self.cbLog("warning", "onClientMessage, could not write to file. Type: " + str(type(ex)) + ", exception: " +  str(ex.args))
-                self.readLocalConfig()
 
     def onAdaptorData(self, message):
         #self.cbLog("debug", "onAdaptorData, message: " + str(json.dumps(message, indent=4)))
@@ -229,11 +237,6 @@ class App(CbApp):
                 config.update(newConfig)
         except Exception as ex:
             self.cbLog("warning", "Local config does not exist or file is corrupt. Exception: " + str(type(ex)) + str(ex.args))
-        for c in config:
-            if str(config[c]).lower() in ("true", "t", "1"):
-                config[c] = True
-            elif str(config[c]).lower() in ("false", "f", "0"):
-                config[c] = False
         self.cbLog("debug", "Config: " + str(json.dumps(config, indent=4)))
 
     def onConfigureMessage(self, managerConfig):
@@ -253,7 +256,6 @@ class App(CbApp):
         self.client.onClientMessage = self.onClientMessage
         self.client.sendMessage = self.sendMessage
         self.client.cbLog = self.cbLog
-        self.entryExit = EntryExit()
         self.entryExit.client = self.client
         self.entryExit.cbLog = self.cbLog
         self.entryExit.bridge_id = self.bridge_id
