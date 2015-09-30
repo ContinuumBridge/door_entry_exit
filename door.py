@@ -48,6 +48,10 @@ class EntryExit():
         self.waiting = False
         reactor.callLater(10, self.fsm)
 
+    def setIDs(self, bridge_id, idToName):
+        self.idToName = idToName
+        self.bridge_id = bridge_id
+
     def onChange(self, devID, timeStamp, value):
         if devID == self.magID:
             sensor = "magsw"
@@ -185,7 +189,7 @@ class App(CbApp):
                     newConfig = message["config"]
                     copyConfig = config.copy()
                     copyConfig.update(newConfig)
-                    if copyConfig != config:
+                    if copyConfig != config or not os.path.isfile(CONFIG_FILE):
                         self.cbLog("debug", "onClientMessage. Updating config from client message")
                         config = copyConfig.copy()
                         with open(CONFIG_FILE, 'w') as f:
@@ -218,6 +222,9 @@ class App(CbApp):
                 if "type" in p:
                     if p["type"] == "pir":
                         self.entryExit.pirID = message["id"]
+                        serviceReq.append({"characteristic": "binary_sensor", "interval": 0})
+                    else:
+                        self.entryExit.magID = message["id"]
                         serviceReq.append({"characteristic": "binary_sensor", "interval": 0})
                 else:
                     self.entryExit.magID = message["id"]
@@ -256,10 +263,10 @@ class App(CbApp):
         self.client.onClientMessage = self.onClientMessage
         self.client.sendMessage = self.sendMessage
         self.client.cbLog = self.cbLog
+        self.client.loadSaved()
         self.entryExit.client = self.client
         self.entryExit.cbLog = self.cbLog
-        self.entryExit.bridge_id = self.bridge_id
-        self.entryExit.idToName = self.idToName
+        self.entryExit.setIDs(self.bridge_id, self.idToName)
         self.setState("starting")
 
 if __name__ == '__main__':
