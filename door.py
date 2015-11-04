@@ -7,8 +7,8 @@
 # Default values:
 config = {
     "entry-exit": True,
-    "in_pir_to_door_time": 60,
-    "door_close_to_in_pir_time": 60,
+    "in_pir_to_door_time": 60, # how long before door to check PIR
+    "door_close_to_in_pir_time": 60, # how long to wait for no inside activity
     "door_open_to_in_pir_time": 60,
     "max_door_open_time": 120,
     "data_send_delay": 1
@@ -59,19 +59,22 @@ class EntryExit():
             sensor = "pir"
         else:
             sensor = "unknown"
-        self.cbLog("debug", "EntryExit, onChange. sensor: " + sensor)
         if sensor == "pir":
             if value == "on":
+                self.cbLog("debug", "MS-EntryExit, onChange. sensor:ON " + sensor)
                 self.inside_pir_on_time = timeStamp
                 self.inside_pir_on = True
             else:
+                self.cbLog("debug", "MS-EntryExit, onChange. sensor:OFF " + sensor)
                 self.inside_pir_off_time = timeStamp
                 self.inside_pir_on = False
         if sensor == "magsw":
             if value == "on":
+                self.cbLog("debug", "MS-EntryExit, onChange. sensor:ON " + sensor)
                 self.door_open = True
                 self.door_open_time = timeStamp
             else:
+                self.cbLog("debug", "MS-EntryExit, onChange. sensor:OFF " + sensor)
                 self.door_open = False
                 self.door_close_time = timeStamp
 
@@ -91,12 +94,19 @@ class EntryExit():
         elif self.state == "check_went_out":
             t = time.time()
             if t - self.door_close_time > config["door_close_to_in_pir_time"]:
-                if self.inside_pir_on or t - self.inside_pir_off_time < config["door_close_to_in_pir_time"] - 4:
+	        self.cbLog("debug", "MS-EntryExit, t - self.door_close_time = " + str(t - self.door_close_time)) 
+                if self.inside_pir_on or t - self.inside_pir_off_time < config["door_close_to_in_pir_time"] - 20: # increased came_in window from 4s
+	            if self.inside_pir_on:
+                        self.cbLog("debug", "MS-EntryExit, answered door 'cause pir still ON")
+                    else:
+                        self.cbLog("debug", "MS-EntryExit, answered door 'cause t - inside_pir_off_time = " + str(t - self.inside_pir_off_time))
                     action = "answered_door"
                     self.state = "idle"
                 else:
                     action = "went_out"
                     self.state = "idle"
+            #else:
+                #self.cbLog("debug", "MS-EntryExit, waiting for t - self.door_close_time = " + str(t - self.door_close_time))
         elif self.state == "check_coming_in":
             if self.inside_pir_on:
                 action = "came_in"
@@ -120,9 +130,9 @@ class EntryExit():
             self.cbLog("warning", "door algorithm imposssible state")
             self.state = "idle"
         if self.state != prev_state:
-            self.cbLog("debug", "checkExits, new state: " + self.state)
+            self.cbLog("debug", "MS-checkExits, new state: " + self.state)
         if action != "none":
-            self.cbLog("debug", "checkExits, action: " + action) 
+            self.cbLog("debug", "MS-checkExits, action: " + action) 
             values = {
                 "name": self.bridge_id + "/entry_exit/" + self.idToName[self.magID] + "/" + action,
                 "points": [[int(time.time()*1000), 1]]
